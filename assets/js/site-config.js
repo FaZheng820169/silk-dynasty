@@ -15,7 +15,7 @@ window.SILK_DYNASTY = {
   },
 
   // Concierge delivery mailbox.
-  atelierEmail: "hello@silkdynasty.studio",
+  atelierEmail: "godlaw2025@outlook.com",
 
   // Free preview uses a public text-to-image endpoint. It produces a generic
   // hanfu portrait (not the user's face) — the paid plan puts the user's

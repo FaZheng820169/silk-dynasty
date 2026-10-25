@@ -31,7 +31,7 @@
   };
 
   var DYNASTY_LABEL = { tang: "Tang", song: "Song", ming: "Ming" };
-  var ATELIER_EMAIL = (window.SILK_DYNASTY && window.SILK_DYNASTY.atelierEmail) || "hello@silkdynasty.studio";
+  var ATELIER_EMAIL = (window.SILK_DYNASTY && window.SILK_DYNASTY.atelierEmail) || "godlaw2025@outlook.com";
   var PREVIEW_ENDPOINT = (window.SILK_DYNASTY && window.SILK_DYNASTY.previewEndpoint) ||
     "https://image.pollinations.ai/prompt/";
   var PAY_LINKS = (window.SILK_DYNASTY && window.SILK_DYNASTY.payLinks) || {};
