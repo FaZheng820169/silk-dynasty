@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Begin your portrait — Silk Dynasty 锦衣</title>
+<meta name="description" content="Send one photograph and choose your dynasty. Tang, Song or Ming portraits, delivered within 48 hours.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2312100e'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23a2281c' font-family='serif'%3E%E9%94%A6%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/site.css">
+<link rel="stylesheet" href="assets/css/studio.css">
+<script src="assets/js/site-config.js"></script>
+</head>
+<body class="studio-page">
+
+<div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
+
+<header class="masthead is-solid" id="masthead" data-solid>
+  <a class="brand" href="index.html">
+    <span class="brand-cn">锦衣</span>
+    <span class="brand-en">Silk Dynasty</span>
+  </a>
+  <nav class="nav" aria-label="Primary">
+    <a href="index.html#collections">Collections</a>
+    <a href="index.html#craft">Craft</a>
+    <a href="index.html#pricing">Pricing</a>
+    <a href="index.html#questions">Questions</a>
+  </nav>
+  <a class="btn btn-sm" href="index.html">Back to the atelier</a>
+</header>
+
+<main class="studio">
+  <header class="studio-head">
+    <p class="kicker">The sitting</p>
+    <h1>Begin your portrait.</h1>
+    <p class="lede">Try a free preview in seconds — pick a dynasty and describe yourself. Then upgrade to put your own face on the portrait.</p>
+  </header>
+
+  <!-- FREE PREVIEW -->
+  <section class="preview" aria-labelledby="previewTitle">
+    <div class="preview-copy">
+      <p class="kicker">Free preview</p>
+      <h2 id="previewTitle">See the robe before you commit.</h2>
+      <p>Choose a dynasty and describe yourself. We generate a hanfu portrait instantly. This is a generic portrait — the paid plans put your actual face on it.</p>
+    </div>
+    <div class="preview-panel">
+      <div class="preview-row">
+        <div class="preview-dynasties" role="radiogroup" aria-label="Dynasty">
+          <button type="button" class="pdy is-on" data-dy="tang"><i>唐</i> Tang</button>
+          <button type="button" class="pdy" data-dy="song"><i>宋</i> Song</button>
+          <button type="button" class="pdy" data-dy="ming"><i>明</i> Ming</button>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:1rem">
+        <label for="previewDesc">Describe yourself <span>optional</span></label>
+        <input id="previewDesc" type="text" placeholder="e.g. a young woman with long black hair" maxlength="120">
+      </div>
+      <button type="button" class="btn" id="previewBtn">Generate preview</button>
+      <div class="preview-out" id="previewOut">
+        <div class="preview-placeholder" id="previewPh">Your portrait appears here.</div>
+      </div>
+      <p class="preview-note" id="previewNote" hidden>Generic preview only. <a href="#orderForm">Put your face on it →</a></p>
+    </div>
+  </section>
+
+  <div class="studio-grid">
+
+    <!-- ============ FORM ============ -->
+    <form class="studio-form" id="orderForm" novalidate>
+
+      <!-- STEP 1 -->
+      <section class="step" aria-labelledby="step1">
+        <div class="step-head">
+          <span class="step-num">I</span>
+          <div>
+            <h2 id="step1">Your photograph</h2>
+            <p>One full-body photo, daylight, plain wall. Arms and feet visible.</p>
+          </div>
+        </div>
+
+        <label class="dropzone" id="dropzone" for="photoInput">
+          <input id="photoInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+          <img id="photoPreview" alt="Preview of the photograph you selected" hidden>
+          <div class="dropzone-empty" id="dropzoneEmpty">
+            <span class="dz-mark" aria-hidden="true">＋</span>
+            <strong>Choose a photograph</strong>
+            <span>JPEG, PNG or WebP · at least 1200 px on the long edge</span>
+          </div>
+          <div class="dropzone-status" id="photoStatus" hidden></div>
+        </label>
+
+        <div class="photo-actions">
+          <button type="button" class="link-btn" id="clearPhoto" hidden>Remove photograph</button>
+        </div>
+
+        <details class="guide">
+          <summary>What makes a good photograph</summary>
+          <ul>
+            <li>Stand straight, facing the camera, arms slightly away from your body.</li>
+            <li>Feet and both hands visible. Hidden hands are the most common reason a set fails.</li>
+            <li>Daylight or a bright window, no coloured lamp light, no strong shadow across the face.</li>
+            <li>Plain wall behind you, no filter, no beauty mode.</li>
+          </ul>
+        </details>
+      </section>
+
+      <!-- STEP 2 -->
+      <section class="step" aria-labelledby="step2">
+        <div class="step-head">
+          <span class="step-num">II</span>
+          <div>
+            <h2 id="step2">Your set</h2>
+            <p>Every plan is a one-time payment. Files are yours to keep.</p>
+          </div>
+        </div>
+
+        <fieldset class="plans">
+          <legend class="sr-only">Choose a plan</legend>
+
+          <label class="plan">
+            <input type="radio" name="plan" value="single" data-price="19">
+            <span class="plan-body">
+              <span class="plan-name">Single Robe</span>
+              <span class="plan-desc">One dynasty · 4 portraits · 2K</span>
+            </span>
+            <span class="plan-price">$19</span>
+          </label>
+
+          <label class="plan">
+            <input type="radio" name="plan" value="trio" data-price="49" checked>
+            <span class="plan-body">
+              <span class="plan-name">Dynasty Trio <em>Most chosen</em></span>
+              <span class="plan-desc">All three dynasties · 9 portraits · 4K · styling notes</span>
+            </span>
+            <span class="plan-price">$49</span>
+          </label>
+
+          <label class="plan">
+            <input type="radio" name="plan" value="heirloom" data-price="89">
+            <span class="plan-body">
+              <span class="plan-name">Heirloom</span>
+              <span class="plan-desc">Trio · 4K · 24-page album shipped worldwide</span>
+            </span>
+            <span class="plan-price">$89</span>
+          </label>
+        </fieldset>
+
+        <div class="dynasty-picker" id="dynastyPicker">
+          <p class="field-label">Which dynasty, if you have a preference?</p>
+          <div class="dynasty-row">
+            <label class="dy">
+              <input type="radio" name="dynasty" value="tang" checked>
+              <span class="dy-media"><img src="assets/img/collection-tang.jpg" alt="Tang dynasty robes"></span>
+              <span class="dy-name"><i>唐</i> Tang</span>
+            </label>
+            <label class="dy">
+              <input type="radio" name="dynasty" value="song">
+              <span class="dy-media"><img src="assets/img/collection-song.jpg" alt="Song dynasty robes"></span>
+              <span class="dy-name"><i>宋</i> Song</span>
+            </label>
+            <label class="dy">
+              <input type="radio" name="dynasty" value="ming">
+              <span class="dy-media"><img src="assets/img/collection-ming.jpg" alt="Ming dynasty robes"></span>
+              <span class="dy-name"><i>明</i> Ming</span>
+            </label>
+          </div>
+          <p class="field-hint" id="dynastyHint">Trio and Heirloom include all three dynasties — your choice just sets the running order.</p>
+        </div>
+      </section>
+
+      <!-- STEP 3 -->
+      <section class="step" aria-labelledby="step3">
+        <div class="step-head">
+          <span class="step-num">III</span>
+          <div>
+            <h2 id="step3">Where to send it</h2>
+            <p>We reply with a secure payment link and a delivery date.</p>
+          </div>
+        </div>
+
+        <div class="fields">
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+          </div>
+          <div class="field">
+            <label for="name">Name <span>optional</span></label>
+            <input id="name" name="name" type="text" autocomplete="name" placeholder="How we should address you">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="note">Anything we should know? <span>optional</span></label>
+          <textarea id="note" name="note" rows="3" placeholder="Height, preferred colours, a dynasty you love, an occasion…"></textarea>
+        </div>
+
+        <div class="delivery-mode" role="radiogroup" aria-label="Delivery method">
+          <label class="dm is-on">
+            <input type="radio" name="delivery" value="concierge" checked>
+            <span class="dm-body">
+              <strong>Concierge</strong>
+              <span>Send the photo by email. A person art-directs, corrects and delivers within 48 hours.</span>
+            </span>
+          </label>
+          <label class="dm">
+            <input type="radio" name="delivery" value="automatic">
+            <span class="dm-body">
+              <strong>Automatic <em>beta</em></strong>
+              <span>Uploaded here and generated in minutes. Human proofing included.</span>
+            </span>
+          </label>
+        </div>
+
+        <label class="consent">
+          <input type="checkbox" id="consent" required>
+          <span>I understand these are AI-generated portraits, labelled as generated, and that my photograph will be deleted after delivery or on request.</span>
+        </label>
+
+        <p class="form-error" id="formError" role="alert" hidden></p>
+
+        <button class="btn btn-submit" type="submit" id="submitBtn">Request this set</button>
+        <p class="form-foot">No card is taken on this page. Nothing is charged until you approve the payment link.</p>
+      </section>
+    </form>
+
+    <!-- ============ SUMMARY ============ -->
+    <aside class="summary" aria-label="Order summary">
+      <div class="summary-inner">
+        <p class="kicker">Your order</p>
+        <div class="summary-set" id="summarySet">Dynasty Trio</div>
+        <p class="summary-desc" id="summaryDesc">Tang · Song · Ming · 9 portraits at 4K</p>
+
+        <dl class="summary-list">
+          <div><dt>Delivered</dt><dd>Within 48 hours of approval</dd></div>
+          <div><dt>Format</dt><dd>JPEG, 4K, colour-graded</dd></div>
+          <div><dt>Revision</dt><dd>One free redo per set</dd></div>
+          <div><dt>Print</dt><dd id="summaryPrint">Not included</dd></div>
+        </dl>
+
+        <div class="summary-total">
+          <span>Total</span>
+          <strong id="summaryTotal">$49</strong>
+        </div>
+
+        <p class="summary-note">Prices in USD. Taxes handled at checkout.</p>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<!-- ============ CONFIRMATION ============ -->
+<div class="confirm" id="confirm" hidden>
+  <div class="confirm-panel" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <button class="confirm-close" id="confirmClose" aria-label="Close">×</button>
+    <p class="kicker">One more step</p>
+    <h2 id="confirmTitle">Send us the photograph.</h2>
+    <p class="confirm-lead">Your photo has not left this device. Open the email below — it already contains your order — and attach the photograph there.</p>
+
+    <div class="order-ref">
+      <span>Order reference</span>
+      <strong id="orderRef">SD-0000</strong>
+    </div>
+
+    <div class="confirm-actions">
+      <a class="btn" id="mailLink" href="#">Open email draft</a>
+      <button class="link-btn" type="button" id="copyBtn">Copy order details</button>
+    </div>
+
+    <p class="confirm-foot">We answer within a few hours, usually much sooner. If anything is unclear about the photograph, we will tell you before you pay.</p>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="footer-brand">
+    <span class="brand-cn">锦衣</span>
+    <span>Silk Dynasty · Hanfu portrait atelier</span>
+  </div>
+  <nav aria-label="Legal">
+    <a href="privacy.html">Privacy</a>
+    <a href="terms.html">Terms</a>
+    <a href="mailto:hello@silkdynasty.studio">hello@silkdynasty.studio</a>
+  </nav>
+  <p class="footer-note">© 2026 Silk Dynasty. All portraits are AI-generated and labelled as such.</p>
+</footer>
+
+<script src="assets/js/site.js"></script>
+<script src="assets/js/studio.js"></script>
+</body>
+</html>
