@@ -1,0 +1,12 @@
+{
+  "name": "silk-dynasty",
+  "version": "1.0.0",
+  "description": "Silk Dynasty 锦衣 — AI Hanfu portrait atelier",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "dev": "node dev-server.js"
+  }
+}
