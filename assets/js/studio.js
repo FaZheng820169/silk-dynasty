@@ -29,7 +29,7 @@
   var DYNASTY_LABEL = { tang: "Tang", song: "Song", ming: "Ming" };
   var ATELIER_EMAIL = (window.SILK_DYNASTY && window.SILK_DYNASTY.atelierEmail) || "hello@silkdynasty.studio";
   var PREVIEW_ENDPOINT = (window.SILK_DYNASTY && window.SILK_DYNASTY.previewEndpoint) ||
-    "https://trae-api-cn.mchost.guru/api/ide/v1/tool_text_to_image";
+    "https://image.pollinations.ai/prompt/";
   var PAY_LINKS = (window.SILK_DYNASTY && window.SILK_DYNASTY.payLinks) || {};
   var API_BASE = (window.SILK_DYNASTY && window.SILK_DYNASTY.apiBase) || "";
 
@@ -63,6 +63,14 @@
   var orderRefEl = document.getElementById("orderRef");
   var mailLink = document.getElementById("mailLink");
   var copyBtn = document.getElementById("copyBtn");
+  var confirmKicker = document.getElementById("confirmKicker");
+  var confirmTitleEl = document.getElementById("confirmTitle");
+  var confirmLead = document.getElementById("confirmLead");
+  var confirmProgress = document.getElementById("confirmProgress");
+  var confirmGallery = document.getElementById("confirmGallery");
+  var orderRefBox = document.getElementById("orderRefBox");
+  var confirmActions = document.getElementById("confirmActions");
+  var confirmFoot = document.getElementById("confirmFoot");
 
   function track(event, props) {
     try {
@@ -281,8 +289,8 @@
     });
   }
 
-  // Automatic mode: send the photo to the generation API and return a portrait.
-  function autoGenerate(plan, dynasty) {
+  // Automatic mode: send the photo to the generation API and return one portrait.
+  function autoGenerate(plan, dynasty, index) {
     var file = photoInput.files && photoInput.files[0];
     if (!file) return Promise.reject(new Error("No photograph"));
     return readPhotoAsDataURL(file).then(function (dataUrl) {
@@ -293,9 +301,15 @@
           personImage: dataUrl,
           dynasty: dynasty,
           plan: plan,
+          index: index || 0,
           description: document.getElementById("previewDesc").value.trim()
         })
-      }).then(function (r) { return r.json(); });
+      }).then(function (r) {
+        return r.json().then(function (data) {
+          if (!r.ok) throw new Error(data && data.error ? data.error : "HTTP " + r.status);
+          return data;
+        });
+      });
     });
   }
 
@@ -330,34 +344,33 @@
     var plan = planValue();
     var dynasty = dynastyValue();
     var delivery = form.querySelector('input[name="delivery"]:checked').value;
-    var payLink = paymentLink(plan);
-
-    // If a Paddle link exists, send the customer straight to checkout.
-    if (payLink) {
-      track("open_checkout", { plan: plan, delivery: delivery });
-      window.open(payLink, "_blank", "noopener");
-    }
 
     if (delivery === "automatic") {
       submitBtn.disabled = true;
       var oldLabel = submitBtn.textContent;
-      submitBtn.textContent = "Generating…";
-      autoGenerate(plan, dynasty).then(function (result) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = oldLabel;
-        if (result && result.image) {
-          showConfirmWithImage(result.image, result.status || "ok");
-        } else {
-          showConfirm();
-        }
-        track("auto_generate", { plan: plan, dynasty: dynasty, status: result && result.status });
-      }).catch(function (err) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = oldLabel;
-        formError.hidden = false;
-        formError.textContent = "Automatic generation is not available right now — please choose Concierge and we will deliver by email. (" + (err && err.message) + ")";
-      });
+      submitBtn.textContent = "Rendering…";
+      startAutomatic(plan, dynasty);
+      autoGenerate(plan, dynasty, 0)
+        .then(function (result) {
+          if (result && result.image && result.status !== "unavailable") {
+            finishAutomatic(plan, dynasty, result);
+            track("auto_generate", { plan: plan, dynasty: dynasty, status: result.status });
+          } else {
+            failAutomatic(result && result.note);
+            track("auto_generate", { plan: plan, dynasty: dynasty, status: "unavailable" });
+          }
+        })
+        .catch(function (err) {
+          // Transport-level failure only — the API reports quirk states as JSON.
+          failAutomatic(err && err.message);
+          track("auto_generate", { plan: plan, dynasty: dynasty, status: "error" });
+        })
+        .then(function () {
+          submitBtn.disabled = false;
+          submitBtn.textContent = oldLabel;
+        });
     } else {
+      resetConfirm();
       showConfirm();
     }
     track("submit_request", { plan: plan, dynasty: dynasty, delivery: delivery });
@@ -369,22 +382,105 @@
     confirmClose.focus();
   }
 
-  function showConfirmWithImage(dataUrl, status) {
-    var panel = confirmBox.querySelector(".confirm-panel");
-    var existing = panel.querySelector(".confirm-image");
-    if (existing) existing.remove();
+  var PORTRAIT_COUNT = { single: 4, trio: 9, heirloom: 9 };
+
+  function resetConfirm() {
+    confirmGallery.innerHTML = "";
+    confirmGallery.hidden = true;
+    confirmProgress.hidden = true;
+    confirmProgress.textContent = "";
+    var checkout = confirmActions.querySelector(".js-checkout");
+    if (checkout) checkout.remove();
+    orderRefBox.hidden = false;
+    confirmActions.hidden = false;
+    confirmFoot.hidden = false;
+    confirmKicker.textContent = "One more step";
+    confirmTitleEl.textContent = "Send us the photograph.";
+    confirmLead.textContent =
+      "Your photo has not left this device. Open the email below — it already contains your order — and attach the photograph there.";
+    confirmFoot.textContent =
+      "We answer within a few hours, usually much sooner. If anything is unclear about the photograph, we will tell you before you pay.";
+    mailLink.textContent = "Open email draft";
+    if (currentRef) mailLink.href = buildMailto(currentRef);
+  }
+
+  // Automatic mode, state 1: the frame is being rendered.
+  function startAutomatic(plan, dynasty) {
+    resetConfirm();
+    confirmKicker.textContent = "Automatic · beta";
+    confirmTitleEl.textContent = "Rendering your proof portrait.";
+    confirmLead.textContent =
+      "One free frame, made from your own face, so you can judge the quality before paying anything.";
+    confirmProgress.hidden = false;
+    confirmProgress.textContent = "Reading your photograph…";
+    confirmGallery.hidden = false;
+    confirmGallery.innerHTML = '<div class="cg-skeleton" aria-hidden="true"></div>';
+    orderRefBox.hidden = true;
+    confirmActions.hidden = true;
+    confirmFoot.textContent =
+      "Your photo goes to the renderer for this one frame and is not kept on our side. Keep this page open — the frame appears right here when it is ready.";
+    showConfirm();
+  }
+
+  // Automatic mode, state 2: proof arrived, now ask for the order.
+  function finishAutomatic(plan, dynasty, result) {
+    var count = PORTRAIT_COUNT[plan] || 4;
+    var label = DYNASTY_LABEL[dynasty] || dynasty;
+
+    confirmGallery.innerHTML = "";
     var img = document.createElement("img");
     img.className = "confirm-image";
-    img.src = dataUrl;
-    img.alt = "Your generated portrait";
-    panel.insertBefore(img, panel.querySelector(".order-ref"));
-    if (status === "mock") {
-      var n = document.createElement("p");
-      n.className = "confirm-foot";
-      n.style.color = "var(--cinnabar)";
-      n.textContent = "Demo image — connect a model key in .env to generate from your photograph.";
-      panel.insertBefore(n, panel.querySelector(".order-ref").nextSibling);
+    img.src = result.image;
+    img.alt = "Your proof portrait in " + label + " dynasty dress";
+    confirmGallery.appendChild(img);
+
+    if (result.status !== "mock") {
+      var save = document.createElement("a");
+      save.className = "cg-download";
+      save.href = result.image;
+      save.download = currentRef + "-" + dynasty + "-proof.jpg";
+      save.textContent = "Save this proof";
+      confirmGallery.appendChild(save);
     }
+
+    confirmKicker.textContent = result.status === "mock" ? "Demo frame" : "Proof ready";
+    confirmTitleEl.textContent = result.status === "mock"
+      ? "This is a demo frame, not your photograph."
+      : "That is you, in " + label + " silk.";
+    confirmLead.textContent = result.status === "mock"
+      ? "The automatic renderer is running a demo mode. Choose Concierge and a person will make the set from your photograph."
+      : "One frame of " + count + ". The full set — " + count + " portraits at 4K, colour-graded — is delivered within 48 hours of payment.";
+    confirmProgress.hidden = true;
+    orderRefBox.hidden = false;
+    confirmActions.hidden = false;
+    mailLink.textContent = "Order the full set";
+    confirmFoot.textContent =
+      "Send the email with your order reference and we reply with a secure payment link. The proof stays yours either way.";
+
+    var payLink = paymentLink(plan);
+    if (payLink && result.status !== "mock") {
+      var checkout = document.createElement("a");
+      checkout.className = "btn js-checkout";
+      checkout.href = payLink;
+      checkout.target = "_blank";
+      checkout.rel = "noopener";
+      checkout.textContent = "Pay $" + PLANS[plan].price + " and get the set";
+      confirmActions.insertBefore(checkout, mailLink);
+      mailLink.textContent = "Ask a question first";
+    }
+    showConfirm();
+  }
+
+  // Automatic mode, state 3: renderer unavailable — fall back to Concierge.
+  function failAutomatic(message) {
+    resetConfirm();
+    confirmKicker.textContent = "Automatic unavailable";
+    confirmTitleEl.textContent = "Let a person do this one.";
+    confirmLead.textContent =
+      "The automatic renderer is busy right now, so nothing was made. Nothing is lost — send the photograph by email and we art-direct the set by hand.";
+    confirmFoot.textContent =
+      "This is the slower path, not the worse one. Most clients end up preferring it.";
+    if (message && window.console) console.info("[Silk Dynasty] automatic unavailable:", message);
     showConfirm();
   }
 

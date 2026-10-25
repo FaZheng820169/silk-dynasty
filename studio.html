@@ -208,7 +208,7 @@
             <input type="radio" name="delivery" value="automatic">
             <span class="dm-body">
               <strong>Automatic <em>beta</em></strong>
-              <span>Uploaded here and generated in minutes. Human proofing included.</span>
+              <span>One free proof portrait of your own face, rendered here in about a minute. The photo goes to the renderer for that one frame only. The full set follows after payment.</span>
             </span>
           </label>
         </div>
@@ -254,21 +254,24 @@
 <div class="confirm" id="confirm" hidden>
   <div class="confirm-panel" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
     <button class="confirm-close" id="confirmClose" aria-label="Close">×</button>
-    <p class="kicker">One more step</p>
+    <p class="kicker" id="confirmKicker">One more step</p>
     <h2 id="confirmTitle">Send us the photograph.</h2>
-    <p class="confirm-lead">Your photo has not left this device. Open the email below — it already contains your order — and attach the photograph there.</p>
+    <p class="confirm-lead" id="confirmLead">Your photo has not left this device. Open the email below — it already contains your order — and attach the photograph there.</p>
 
-    <div class="order-ref">
+    <p class="confirm-progress" id="confirmProgress" hidden></p>
+    <div class="confirm-gallery" id="confirmGallery" hidden></div>
+
+    <div class="order-ref" id="orderRefBox">
       <span>Order reference</span>
       <strong id="orderRef">SD-0000</strong>
     </div>
 
-    <div class="confirm-actions">
+    <div class="confirm-actions" id="confirmActions">
       <a class="btn" id="mailLink" href="#">Open email draft</a>
       <button class="link-btn" type="button" id="copyBtn">Copy order details</button>
     </div>
 
-    <p class="confirm-foot">We answer within a few hours, usually much sooner. If anything is unclear about the photograph, we will tell you before you pay.</p>
+    <p class="confirm-foot" id="confirmFoot">We answer within a few hours, usually much sooner. If anything is unclear about the photograph, we will tell you before you pay.</p>
   </div>
 </div>
 
