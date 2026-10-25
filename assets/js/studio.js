@@ -71,6 +71,7 @@
   var orderRefBox = document.getElementById("orderRefBox");
   var confirmActions = document.getElementById("confirmActions");
   var confirmFoot = document.getElementById("confirmFoot");
+  var confirmPanel = confirmBox.querySelector(".confirm-panel");
 
   function track(event, props) {
     try {
@@ -389,6 +390,7 @@
     confirmGallery.hidden = true;
     confirmProgress.hidden = true;
     confirmProgress.textContent = "";
+    confirmPanel.classList.remove("proof");
     var checkout = confirmActions.querySelector(".js-checkout");
     if (checkout) checkout.remove();
     orderRefBox.hidden = false;
@@ -407,6 +409,7 @@
   // Automatic mode, state 1: the frame is being rendered.
   function startAutomatic(plan, dynasty) {
     resetConfirm();
+    confirmPanel.classList.add("proof");
     confirmKicker.textContent = "Automatic · beta";
     confirmTitleEl.textContent = "Rendering your proof portrait.";
     confirmLead.textContent =
