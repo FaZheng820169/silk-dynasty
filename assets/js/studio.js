@@ -606,6 +606,11 @@
     if (set && DYNASTY_LABEL[set]) {
       var dyInput = form.querySelector('input[name="dynasty"][value="' + set + '"]');
       if (dyInput) dyInput.checked = true;
+      // Keep the free preview on the same dynasty the visitor arrived for.
+      previewDynasty = set;
+      Array.prototype.forEach.call(document.querySelectorAll(".pdy"), function (btn) {
+        btn.classList.toggle("is-on", btn.getAttribute("data-dy") === set);
+      });
     }
 
     Array.prototype.forEach.call(form.querySelectorAll(".dy"), function (el) {
