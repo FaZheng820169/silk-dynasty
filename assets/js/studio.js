@@ -532,7 +532,8 @@
     confirmActions.hidden = false;
     mailLink.textContent = "Order the full set";
     confirmFoot.textContent =
-      "Send the email with your order reference and we reply with a secure payment link. The proof stays yours either way.";
+      "Attach your original photograph to that email — a " + res + " set is made from the photo, not from the proof. " +
+      "We reply with a secure payment link, usually within a few hours. The proof stays yours either way.";
 
     var payLink = paymentLink(plan);
     if (payLink && result.status !== "mock") {
@@ -544,6 +545,9 @@
       checkout.textContent = "Pay $" + PLANS[plan].price + " and get the set";
       confirmActions.insertBefore(checkout, mailLink);
       mailLink.textContent = "Ask a question first";
+      confirmFoot.textContent =
+        "After paying, email your original photograph with reference " + currentRef +
+        " — the set is built from it, not from the proof. The proof stays yours either way.";
     }
     showConfirm();
   }
