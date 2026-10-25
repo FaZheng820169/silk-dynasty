@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 
-Sitemap: https://silkdynasty.studio/sitemap.xml
+Sitemap: https://fazheng820169.github.io/silk-dynasty/sitemap.xml
