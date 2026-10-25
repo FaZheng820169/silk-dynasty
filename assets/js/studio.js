@@ -154,20 +154,89 @@
     });
   });
 
-  if (previewBtn) {
-    previewBtn.addEventListener("click", function () {
-      var desc = (document.getElementById("previewDesc").value.trim() || "a person").slice(0, 120);
-      var prompt = PREVIEW_PROMPTS[previewDynasty].replace("{desc}", desc);
-      // Pollinations.ai: /prompt/{encoded}?width=&height=&nologo=&seed=
-      var url = PREVIEW_ENDPOINT + encodeURIComponent(prompt) +
-        "?width=720&height=1280&nologo=true&seed=" + Date.now();
-      previewPh.hidden = true;
-      previewOut.innerHTML =
-        '<img alt="AI-generated hanfu portrait preview" src="' + url.replace(/"/g, "&quot;") + '">';
-      previewNote.hidden = false;
-      track("preview_generate", { dynasty: previewDynasty });
+  /* The free preview runs on a public text-to-image endpoint that rate-limits
+     per visitor. When it answers 402/429 it returns a branded placeholder
+     picture, which a plain <img> would happily show as if it were a portrait.
+     So the response is fetched and checked, retried once, and — if the endpoint
+     is still busy — replaced with a real atelier portrait and an honest line of
+     copy instead of a fake. */
+  var PREVIEW_FALLBACK = {
+    tang: "assets/img/collection-tang.jpg",
+    song: "assets/img/collection-song.jpg",
+    ming: "assets/img/collection-ming.jpg",
+  };
+  var PREVIEW_NOTE_DEFAULT = 'Generic preview only. <a href="#orderForm">Put your face on it →</a>';
+  var lastPreviewUrl = null;
+
+  function sleep(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
+  function fetchPreviewImage(url) {
+    return fetch(url, { mode: "cors", cache: "no-store" }).then(function (r) {
+      if (!r.ok) {
+        var err = new Error("preview " + r.status);
+        err.status = r.status;
+        throw err;
+      }
+      var type = r.headers.get("content-type") || "";
+      if (type.indexOf("image/") !== 0) throw new Error("preview did not return an image");
+      return r.blob();
     });
   }
+
+  function showPreviewImage(src, alt) {
+    previewOut.innerHTML = "";
+    var img = document.createElement("img");
+    img.alt = alt;
+    img.src = src;
+    previewOut.appendChild(img);
+  }
+
+  function runPreview() {
+    var desc = (document.getElementById("previewDesc").value.trim() || "a person").slice(0, 120);
+    var prompt = PREVIEW_PROMPTS[previewDynasty].replace("{desc}", desc);
+    var dynasty = previewDynasty;
+    var label = DYNASTY_LABEL[dynasty] || dynasty;
+    // Pollinations.ai: /prompt/{encoded}?width=&height=&nologo=&seed=
+    var url = PREVIEW_ENDPOINT + encodeURIComponent(prompt) +
+      "?width=720&height=1280&nologo=true&seed=" + Date.now();
+
+    previewBtn.disabled = true;
+    previewBtn.textContent = "Composing…";
+    previewPh.hidden = true;
+    previewNote.hidden = true;
+    previewOut.innerHTML = '<div class="preview-wait">Composing a ' + label + " portrait…</div>";
+
+    var release = function () {
+      previewBtn.disabled = false;
+      previewBtn.textContent = "Generate preview";
+    };
+
+    fetchPreviewImage(url)
+      .catch(function (err) {
+        if (err.status !== 402 && err.status !== 429) throw err;
+        return sleep(4000).then(function () { return fetchPreviewImage(url + "&retry=1"); });
+      })
+      .then(function (blob) {
+        if (lastPreviewUrl) URL.revokeObjectURL(lastPreviewUrl);
+        lastPreviewUrl = URL.createObjectURL(blob);
+        showPreviewImage(lastPreviewUrl, "AI-generated " + label + " hanfu portrait preview");
+        previewNote.innerHTML = PREVIEW_NOTE_DEFAULT;
+        previewNote.hidden = false;
+        track("preview_generate", { dynasty: dynasty, result: "live" });
+      })
+      .catch(function () {
+        showPreviewImage(PREVIEW_FALLBACK[dynasty], "An atelier " + label + " portrait");
+        previewNote.innerHTML = "The live preview is at capacity — this is an atelier portrait, " +
+          'not a live render. Try again in a minute, or <a href="#orderForm">put your face on it →</a>';
+        previewNote.hidden = false;
+        track("preview_generate", { dynasty: dynasty, result: "fallback" });
+      })
+      .then(release, release);
+  }
+
+  if (previewBtn) previewBtn.addEventListener("click", runPreview);
 
   /* ---------- photograph ---------- */
 

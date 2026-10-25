@@ -18,9 +18,10 @@
  *   - qwen-edit (Alibaba DashScope qwen-image-edit, needs DASHSCOPE_API_KEY)
  *   - mock      (returns a cached dynasty sample — offline testing only)
  *
- * Why one portrait per request: a free Kontext render takes ~30s and the
- * host caps a single serverless invocation, so the client asks for the set
- * one frame at a time and shows each portrait as it lands.
+ * Why one portrait per request: a Kontext or Qwen render takes ~30s and the
+ * host caps a single serverless invocation at 60s, so this endpoint makes one
+ * frame per call. The studio calls it once for the free proof; the paid set is
+ * produced offline from the original photograph.
  */
 
 const fs = require("fs");
@@ -101,9 +102,9 @@ function fail(res, code, msg) {
 }
 
 function dataUrlToBuffer(personImage) {
-  const m = /^data:image\/(\w+);base64,(.+)$/.exec(personImage || "");
+  const m = /^data:image\/(jpeg|jpg|png|webp);base64,(.+)$/.exec(personImage || "");
   if (!m) throw new Error("personImage must be a base64 data URL");
-  return { ext: m[1] === "png" ? "png" : "jpg", buf: Buffer.from(m[2], "base64") };
+  return { ext: m[1] === "jpeg" ? "jpg" : m[1], buf: Buffer.from(m[2], "base64") };
 }
 
 /** --- Providers --------------------------------------------------------- */
@@ -291,31 +292,49 @@ async function qwenEditGenerate({ personImage, dynasty, description }) {
 
 /** --- Handler ----------------------------------------------------------- */
 
+const MAX_PHOTO_BYTES = 6 * 1024 * 1024;
+const MAX_DESCRIPTION = 200;
+
+// The photograph arrives from a browser, so it is checked at the boundary:
+// real image type, and small enough that a single request cannot be abused.
+function photoProblem(personImage) {
+  if (!personImage) return "personImage required";
+  if (typeof personImage !== "string") return "personImage must be a base64 data URL";
+  const head = /^data:image\/(jpeg|jpg|png|webp);base64,/.exec(personImage);
+  if (!head) return "personImage must be a JPEG, PNG or WebP data URL";
+  const bytes = (personImage.length - head[0].length) * 0.75;
+  if (bytes > MAX_PHOTO_BYTES) return "personImage is larger than 6 MB";
+  return null;
+}
+
 module.exports = async (req, res) => {
   if (req.method !== "POST") return fail(res, 405, "POST only");
 
   const body = req.body || {};
-  const { personImage, dynasty, description, plan = "single", index = 0 } = body;
+  const { personImage, dynasty, plan = "single", index = 0 } = body;
+  const description =
+    typeof body.description === "string" ? body.description.trim().slice(0, MAX_DESCRIPTION) : "";
   if (!dynasty || !PROMPTS[dynasty]) return fail(res, 400, "dynasty must be tang, song or ming");
 
   try {
     let result;
     switch (PROVIDER) {
       case "seedream":
-        if (!personImage) return fail(res, 400, "personImage required");
-        result = await seedreamGenerate({ personImage, dynasty, description });
-        break;
       case "qwen-edit":
-        if (!personImage) return fail(res, 400, "personImage required");
-        result = await qwenEditGenerate({ personImage, dynasty, description });
+      case "kontext":
+      default: {
+        const problem = photoProblem(personImage);
+        if (problem) return fail(res, 400, problem);
+        result =
+          PROVIDER === "seedream"
+            ? await seedreamGenerate({ personImage, dynasty, description })
+            : PROVIDER === "qwen-edit"
+              ? await qwenEditGenerate({ personImage, dynasty, description })
+              : await kontextGenerate({ personImage, dynasty, description, index });
         break;
+      }
       case "mock":
         result = await mockGenerate({ dynasty });
-        break;
-      case "kontext":
-      default:
-        if (!personImage) return fail(res, 400, "personImage required");
-        result = await kontextGenerate({ personImage, dynasty, description, index });
     }
     ok(res, { provider: PROVIDER, dynasty, plan, index, ...result });
   } catch (err) {

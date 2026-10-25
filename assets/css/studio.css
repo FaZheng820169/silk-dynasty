@@ -63,7 +63,11 @@
 .pdy.is-on { border-color: var(--cinnabar); background: var(--paper-deep); }
 .preview-out {
   margin-top: 1.2rem;
-  min-height: 280px;
+  /* A portrait product needs a portrait frame: a full-width 280px box would
+     crop the subject's face out of a 9:16 render. */
+  width: min(100%, 360px);
+  margin-inline: auto;
+  aspect-ratio: 3 / 4;
   background: #0d0b09;
   display: grid;
   place-items: center;
@@ -82,6 +86,17 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
+.preview-wait {
+  color: rgba(242, 235, 223, 0.6);
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 0 1.5rem;
+  line-height: 1.8;
+  animation: preview-breathe 1.8s ease-in-out infinite;
+}
+@keyframes preview-breathe { 50% { opacity: 0.4; } }
 .preview-note {
   margin: 0.8rem 0 0;
   font-size: 0.72rem;
