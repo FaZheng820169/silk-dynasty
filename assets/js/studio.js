@@ -1,6 +1,7 @@
 /* Silk Dynasty — studio order flow.
-   The photograph never leaves the browser: it is previewed locally and
-   the customer attaches it to the email we prepare for them. */
+   Two ways to sit. Automatic: the photograph is posted to /api/generate and
+   one free proof frame is rendered from it, in the browser. Concierge: the
+   photograph never leaves the browser and is attached to the email we prepare. */
 
 (function () {
   "use strict";
@@ -10,18 +11,21 @@
       name: "Single Robe",
       price: 19,
       desc: "One dynasty · 4 portraits at 2K",
+      res: "2K",
       print: "Not included"
     },
     trio: {
       name: "Dynasty Trio",
       price: 49,
       desc: "Tang · Song · Ming · 9 portraits at 4K",
+      res: "4K",
       print: "Not included"
     },
     heirloom: {
       name: "Heirloom",
       price: 89,
-      desc: "Tang · Song · Ming · 9 portraits at 4K",
+      desc: "Tang · Song · Ming · 9 portraits at 4K + album",
+      res: "4K",
       print: "24-page album, shipped"
     }
   };
@@ -428,6 +432,7 @@
   // Automatic mode, state 2: proof arrived, now ask for the order.
   function finishAutomatic(plan, dynasty, result) {
     var count = PORTRAIT_COUNT[plan] || 4;
+    var res = (PLANS[plan] && PLANS[plan].res) || "4K";
     var label = DYNASTY_LABEL[dynasty] || dynasty;
 
     confirmGallery.innerHTML = "";
@@ -452,7 +457,7 @@
       : "That is you, in " + label + " silk.";
     confirmLead.textContent = result.status === "mock"
       ? "The automatic renderer is running a demo mode. Choose Concierge and a person will make the set from your photograph."
-      : "One frame of " + count + ". The full set — " + count + " portraits at 4K, colour-graded — is delivered within 48 hours of payment.";
+      : "One frame of " + count + ". The full set — " + count + " portraits at " + res + ", colour-graded — is delivered within 48 hours of payment.";
     confirmProgress.hidden = true;
     orderRefBox.hidden = false;
     confirmActions.hidden = false;

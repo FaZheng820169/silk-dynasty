@@ -7,8 +7,12 @@
  * progressively).
  *
  * Providers:
- *   - kontext   (default; FLUX.1 Kontext dev on a public Hugging Face Space —
- *               instruction-driven editing, identity-preserving, no API key)
+ *   - kontext   (default; Hugging Face GRADIO SPACE POOL — FLUX.1 Kontext dev,
+ *               then Qwen-Image-Edit, then Qwen-Image-Edit Fast. All three are
+ *               instruction editors that keep the subject and change the
+ *               clothes. The pool exists because each public Space runs on a
+ *               shared GPU quota and can start refusing jobs mid-day; one dead
+ *               Space must not take the storefront down.)
  *   - seedream  (ByteDance ARK, multi-image reference — strongest identity,
  *               needs ARK_API_KEY + ARK_ENDPOINT_ID)
  *   - qwen-edit (Alibaba DashScope qwen-image-edit, needs DASHSCOPE_API_KEY)
@@ -25,7 +29,6 @@ const path = require("path");
 const PROVIDER = process.env.GEN_PROVIDER || "kontext";
 const KONTEXT_SPACE =
   process.env.KONTEXT_SPACE || "https://black-forest-labs-flux-1-kontext-dev.hf.space";
-const ATELIER_EMAIL = process.env.ATELIER_EMAIL || "hello@silkdynasty.studio";
 
 // Identity lock appended to every prompt — this is the clause that makes the
 // product work, so it stays in one place.
@@ -97,8 +100,6 @@ function fail(res, code, msg) {
   res.status(code).json({ error: msg });
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
 function dataUrlToBuffer(personImage) {
   const m = /^data:image\/(\w+);base64,(.+)$/.exec(personImage || "");
   if (!m) throw new Error("personImage must be a base64 data URL");
@@ -118,82 +119,107 @@ async function mockGenerate({ dynasty }) {
   };
 }
 
-// FLUX.1 Kontext dev on Hugging Face (Gradio 5 API, anonymous).
-// Two-stage: upload the photo to the Space, then queue an instruction edit.
+// FLUX.1 Kontext dev / Qwen-Image-Edit on Hugging Face (Gradio 5 API).
 //
-// The public Space runs on a shared GPU pool with a small anonymous quota.
-// When that quota is spent the Space answers `event: error` for every job —
-// that is an infrastructure ceiling, not a bug, so it is reported as
-// status "unavailable" and the studio falls back to Concierge instead of
-// pretending the request blew up. Setting KONTEXT_HF_TOKEN (any Hugging Face
-// token with Pro attached) puts the account in the priority GPU queue.
-async function kontextGenerate({ personImage, dynasty, description, index, seed }) {
-  const { ext, buf } = dataUrlToBuffer(personImage);
-  const authHeaders = process.env.KONTEXT_HF_TOKEN
-    ? { Authorization: `Bearer ${process.env.KONTEXT_HF_TOKEN}` }
-    : {};
+// Every public Space here runs on the shared ZeroGPU pool, which gives each
+// visitor a small quota. When that quota is spent the Space answers
+// `event: error` for every job — an infrastructure ceiling, not a bug. So each
+// renderer is tried in order and the first frame that comes back wins; if all
+// of them refuse, the result is status "unavailable" and the studio falls back
+// to Concierge instead of pretending the request blew up.
+//
+// Setting KONTEXT_HF_TOKEN (or HF_TOKEN) puts the account in the signed-in
+// queue, which is the only thing that makes this path dependable.
 
-  // 1. Upload the customer photo to the Space sandbox.
+const HF_TOKEN = process.env.KONTEXT_HF_TOKEN || process.env.HF_TOKEN || "";
+
+const RENDERERS = [
+  {
+    id: "kontext",
+    host: KONTEXT_SPACE,
+    build: (file, prompt, seed) => [file, prompt, seed, false, 2.5, 28],
+  },
+  {
+    id: "qwen-edit",
+    host: process.env.QWEN_EDIT_SPACE || "https://qwen-qwen-image-edit.hf.space",
+    build: (file, prompt, seed) => [file, prompt, seed, false, 4, 30, false],
+  },
+  {
+    id: "qwen-edit-fast",
+    host: "https://multimodalart-qwen-image-edit-fast.hf.space",
+    build: (file, prompt, seed) => [file, prompt, seed, false, 1, 8, false],
+  },
+];
+
+// One attempt against one Space: upload → queue → stream → download.
+async function renderOn(renderer, { buf, ext, prompt, seed }) {
+  const headers = HF_TOKEN ? { Authorization: `Bearer ${HF_TOKEN}` } : {};
+
   const form = new FormData();
   form.append("files", new Blob([buf], { type: `image/${ext}` }), `photo.${ext}`);
-  const up = await fetch(`${KONTEXT_SPACE}/gradio_api/upload?upload_id=${Date.now()}`, {
+  const up = await fetch(`${renderer.host}/gradio_api/upload?upload_id=${Date.now()}`, {
     method: "POST",
     body: form,
-    headers: authHeaders,
+    headers,
+    signal: AbortSignal.timeout(15000),
   });
-  if (!up.ok) {
-    return { status: "unavailable", note: `Renderer unreachable (${up.status}).` };
-  }
+  if (!up.ok) return { error: `upload ${up.status}` };
   const uploaded = JSON.parse(await up.text())[0];
-  if (!uploaded) return { status: "unavailable", note: "Renderer returned no file slot." };
+  if (!uploaded) return { error: "no file slot" };
 
-  // 2. Queue the edit. One retry, then hand over to Concierge.
+  const file = { path: uploaded, meta: { _type: "gradio.FileData" } };
+  const call = await fetch(`${renderer.host}/gradio_api/call/infer`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify({ data: renderer.build(file, prompt, seed) }),
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!call.ok) return { error: `queue ${call.status}` };
+  const { event_id: eventId } = await call.json();
+
+  const stream = await fetch(`${renderer.host}/gradio_api/call/infer/${eventId}`, {
+    headers,
+    signal: AbortSignal.timeout(35000),
+  });
+  const body = await stream.text();
+  const match = /"url":\s*"([^"]+)"/.exec(body);
+  if (!match) return { error: body.includes("event: error") ? "space refused (quota)" : "no image" };
+
+  const img = await fetch(match[1].replace(/\\u002F/g, "/"), {
+    headers,
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!img.ok) return { error: `download ${img.status}` };
+  const outBuf = Buffer.from(await img.arrayBuffer());
+  return {
+    image: `data:${img.headers.get("content-type") || "image/webp"};base64,${outBuf.toString("base64")}`,
+  };
+}
+
+async function kontextGenerate({ personImage, dynasty, description, index, seed }) {
+  const { ext, buf } = dataUrlToBuffer(personImage);
   const prompt = promptFor(dynasty, description, index || 0);
-  let lastErr = "";
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const call = await fetch(`${KONTEXT_SPACE}/gradio_api/call/infer`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders },
-      body: JSON.stringify({
-        data: [
-          { path: uploaded, meta: { _type: "gradio.FileData" } },
-          prompt,
-          seed == null ? Math.floor(Math.random() * 1e9) : seed,
-          false,
-          2.5,
-          28,
-        ],
-      }),
-    });
-    if (!call.ok) {
-      lastErr = `queue ${call.status}`;
-      await sleep(3000);
-      continue;
-    }
+  const jobSeed = seed == null ? Math.floor(Math.random() * 1e9) : seed;
 
-    const { event_id: eventId } = await call.json();
-    const stream = await fetch(`${KONTEXT_SPACE}/gradio_api/call/infer/${eventId}`, {
-      headers: authHeaders,
-    });
-    const body = await stream.text();
-    const match = /"url":\s*"([^"]+)"/.exec(body);
-    if (match) {
-      const img = await fetch(match[1].replace(/\\u002F/g, "/"), { headers: authHeaders });
-      if (!img.ok) { lastErr = `download ${img.status}`; continue; }
-      const outBuf = Buffer.from(await img.arrayBuffer());
-      return {
-        status: "ok",
-        image: `data:${img.headers.get("content-type") || "image/webp"};base64,${outBuf.toString("base64")}`,
-      };
+  const failures = [];
+  const started = Date.now();
+  for (const renderer of RENDERERS) {
+    // Vercel caps this invocation at 60s; leave room for the last download.
+    if (Date.now() - started > 48000) break;
+    try {
+      const out = await renderOn(renderer, { buf, ext, prompt, seed: jobSeed });
+      if (out.image) return { status: "ok", renderer: renderer.id, image: out.image };
+      failures.push(`${renderer.id}: ${out.error}`);
+    } catch (err) {
+      failures.push(`${renderer.id}: ${err.name === "TimeoutError" ? "timed out" : err.message}`);
     }
-    lastErr = body.includes("event: error") ? "GPU quota spent" : "no image in response";
   }
 
   return {
     status: "unavailable",
-    note: process.env.KONTEXT_HF_TOKEN
-      ? `Renderer refused the job (${lastErr}).`
-      : `Free renderer quota is spent (${lastErr}). Set KONTEXT_HF_TOKEN for priority GPU access.`,
+    note: HF_TOKEN
+      ? `Every renderer refused this job (${failures.join("; ")}).`
+      : `The free GPU pool is spent right now (${failures.join("; ")}). Set KONTEXT_HF_TOKEN to use the signed-in queue.`,
   };
 }
 
